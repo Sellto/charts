@@ -1,12 +1,32 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-mlflow-server
+  name: {{ include "mlflow.fullname" . }}
   labels:
-    app: mlflow-server
+    app.kubernetes.io/name: {{ include "mlflow.name" . }}
+    helm.sh/chart: {{ include "mlflow.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .Values.service.annotations }}
+  annotations:
+{{ toYaml .Values.service.annotations | indent 4 }}
+{{- end }}
 spec:
+  type: {{ .Values.service.type }}
+  {{- if and .Values.service.loadBalancerIP (eq .Values.service.type "LoadBalancer") }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  {{- end }}
+  {{- if and (eq .Values.service.type "LoadBalancer") .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+  {{ with .Values.service.loadBalancerSourceRanges }}
+{{ toYaml . | indent 4 }}
+{{- end }}
+  {{- end }}
   ports:
-  - port: {{ default 80 $.Values.containerPort }}
-    protocol: TCP
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
   selector:
-    app: mlflow-server
+    app.kubernetes.io/name: {{ include "mlflow.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}

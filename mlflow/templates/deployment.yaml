@@ -1,40 +1,69 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-mlflow-server
+  name: {{ include "mlflow.fullname" . }}
   labels:
-    app: mlflow-server
+    app.kubernetes.io/name: {{ include "mlflow.name" . }}
+    helm.sh/chart: {{ include "mlflow.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
-  replicas: {{ default 1 .Values.replicas }}
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: mlflow-server
+      app.kubernetes.io/name: {{ include "mlflow.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
       labels:
-        app: mlflow-server
+        app.kubernetes.io/name: {{ include "mlflow.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       containers:
-      - name: {{ .Release.Name }}-mlflow-server
-        image: {{ .Values.image }}
-        imagePullPolicy: Always
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          {{- if .Values.env }}
+          env:
+          {{ toYaml .Values.env | indent 8 }}
+          {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}  
 {{- if .Values.volumeMounts }}
-        volumeMounts:
+          volumeMounts:
 {{ toYaml .Values.volumeMounts | indent 8 }}
 {{- end }}
-{{- if .Values.env }}
-        env:
-{{ toYaml .Values.env | indent 8 }}
-{{- end }}
 {{- if .Values.command }}
-        command: {{ .Values.command }}
+          command: {{ .Values.command }}
 {{- end }}
 {{- if .Values.args }}
-        args: {{ .Values.args }}
+          args: {{ .Values.args }}
 {{- end }}
-        ports:
-        - containerPort: {{ default 80 $.Values.containerPort }}
 {{- if .Values.volumes }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
       volumes:
 {{ toYaml .Values.volumes | indent 6 }}
 {{- end }}
