@@ -27,10 +27,17 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
-          {{- if .Values.env }}
           env:
-          {{ toYaml .Values.env | indent 8 }}
-          {{- end }}
+          - name: BACKEND_STORE_URI
+            value: {{ .Values.backend_store_uri }}
+          - name: DEFAULT_ARTIFACT_ROOT
+            value: {{ .Values.default_artifact_root }}
+          - name: MLFLOW_S3_ENDPOINT_URL
+            value: {{ .Values.minio.url }}
+          - name: AWS_ACCESS_KEY_ID
+            value: {{ .Values.minio.accesskey }}
+          - name: AWS_SECRET_ACCESS_KEY
+            value: {{ .Values.minio.secretkey }}
           livenessProbe:
             httpGet:
               path: /
@@ -40,17 +47,10 @@ spec:
               path: /
               port: http
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}  
-{{- if .Values.volumeMounts }}
-          volumeMounts:
-{{ toYaml .Values.volumeMounts | indent 8 }}
-{{- end }}
-{{- if .Values.command }}
-          command: {{ .Values.command }}
-{{- end }}
-{{- if .Values.args }}
-          args: {{ .Values.args }}
-{{- end }}
+            {{- toYaml .Values.resources | nindent 12 }}
+          # volumeMounts:
+          #   - mountPath: "/export"
+          #     name: minio
 {{- if .Values.volumes }}
 {{- with .Values.nodeSelector }}
       nodeSelector:
